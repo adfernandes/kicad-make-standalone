@@ -36,6 +36,7 @@ The script walks up from the current directory (max 4 levels) until it finds a `
 | Flag | Description |
 |---|---|
 | `--project-dir DIR` | Path to the KiCad project (default: walk up from cwd) |
+| `--output-dir DIR` | Copy the project to this dir and convert there; the source is left untouched |
 | `--lib-name NAME` | Override the local library name (default: `<ProjectName>_Lib`) |
 | `--dry-run` | Inventory and resolution report only, no writes |
 | `--force` | Overwrite existing `.bak` files, ignore lock files and the idempotence guard |
@@ -54,6 +55,16 @@ The script walks up from the current directory (max 4 levels) until it finds a `
    python3 make_standalone.py
    ```
 4. Reopen the project in KiCad and re-run DRC / 3D viewer to confirm everything resolved.
+
+### Convert to a separate directory (keep the original)
+
+Use `--output-dir` to copy the project to a new location and convert there. Your original project (still wired to your global libraries) is left untouched, so you can keep working on it normally and only ship the converted copy:
+
+```bash
+python3 make_standalone.py --output-dir /path/to/MyProject_to_send
+```
+
+In this mode no `*.bak` files are created (the source is the backup). If `--output-dir` already exists, the script refuses to run unless you pass `--force` (which wipes and recreates it).
 
 ## Output layout
 

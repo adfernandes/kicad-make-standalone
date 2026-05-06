@@ -4,7 +4,7 @@
 Just run it; the script auto-detects the project (walks up from cwd to find a
 .kicad_pro) and re-execs itself with KiCad's bundled Python if pcbnew is missing.
 
-  python3 tools/make_standalone.py [--project-dir DIR] [--lib-name NAME] [--dry-run] [--force]
+  python3 tools/make_standalone.py [--project-dir DIR] [--output-dir DIR] [--lib-name NAME] [--dry-run] [--force]
 
 Override Python discovery: set the KICAD_PYTHON env var to KiCad's python3.
 """
@@ -664,9 +664,45 @@ def cleanup_stale(project_dir: Path) -> list[str]:
 
 
 def run(args: argparse.Namespace) -> int:
-    project_dir = (
+    source_dir = (
         Path(args.project_dir) if args.project_dir else find_project_dir(Path.cwd())
     ).resolve()
+    detect_project(source_dir)  # fail fast if source isn't a valid KiCad project
+
+    project_dir = source_dir
+    if args.output_dir and not args.dry_run:
+        output_dir = Path(args.output_dir).resolve()
+        if output_dir == source_dir:
+            raise SystemExit("--output-dir must differ from the source project dir")
+        try:
+            output_dir.relative_to(source_dir)
+        except ValueError:
+            pass
+        else:
+            raise SystemExit(
+                f"--output-dir must not be inside the source project: {source_dir}"
+            )
+        locks = list(source_dir.glob("*.kicad_pro-lock"))
+        if locks and not args.force:
+            raise SystemExit(
+                f"KiCad appears open on source (lock file: {locks[0]}). "
+                "Close it or use --force"
+            )
+        if output_dir.exists():
+            if not args.force:
+                raise SystemExit(
+                    f"--output-dir already exists: {output_dir} (use --force to overwrite)"
+                )
+            shutil.rmtree(output_dir)
+        shutil.copytree(
+            source_dir,
+            output_dir,
+            ignore=shutil.ignore_patterns("*.kicad_pro-lock"),
+        )
+        if args.verbose:
+            print(f"copied project to {output_dir}")
+        project_dir = output_dir
+
     pro = detect_project(project_dir)
     lib_name = args.lib_name or f"{pro.stem}_Lib"
 
@@ -714,12 +750,13 @@ def run(args: argparse.Namespace) -> int:
                 print(f"  - {w}")
         return 0
 
-    # Backups
+    # Backups — skip in --output-dir mode since the source is untouched.
     backups: list[Path] = []
-    for f in (sch, pcb, sym_tbl, fp_tbl):
-        b = backup(f, args.force)
-        if b:
-            backups.append(b)
+    if not args.output_dir:
+        for f in (sch, pcb, sym_tbl, fp_tbl):
+            b = backup(f, args.force)
+            if b:
+                backups.append(b)
 
     # Cleanup stale Library.*
     removed = cleanup_stale(project_dir)
@@ -779,6 +816,8 @@ def run(args: argparse.Namespace) -> int:
     print()
     print("== Build self-contained ==")
     print(f"  Project           : {pro.stem}")
+    if args.output_dir:
+        print(f"  Output dir        : {project_dir}")
     print(f"  Lib name          : {lib_name}")
     print(
         f"  Symbols copied    : {len(kept_syms)} (skipped power: kept system-referenced)"
@@ -804,6 +843,11 @@ def main(argv: list[str] | None = None) -> int:
         "--project-dir",
         default=None,
         help="path to KiCad project (default: walk up from cwd to find a .kicad_pro)",
+    )
+    p.add_argument(
+        "--output-dir",
+        default=None,
+        help="copy the project to this dir and convert there; the source is left untouched",
     )
     p.add_argument(
         "--lib-name",
