@@ -66,6 +66,8 @@ python3 make_standalone.py --output-dir /path/to/MyProject_to_send
 
 In this mode no `*.bak` files are created (the source is the backup). If `--output-dir` already exists, the script refuses to run unless you pass `--force` (which wipes and recreates it).
 
+Developer / IDE / OS cruft is excluded from the copy: `.git`, `.gitignore`, `.gitattributes`, `.history`, `.vscode`, `.idea`, `.DS_Store`, `Thumbs.db`, `__pycache__`, `*.pyc`, `*.bak`, `*.kicad_pro-lock`.
+
 ## Output layout
 
 After conversion, your project directory contains:

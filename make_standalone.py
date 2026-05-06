@@ -697,7 +697,20 @@ def run(args: argparse.Namespace) -> int:
         shutil.copytree(
             source_dir,
             output_dir,
-            ignore=shutil.ignore_patterns("*.kicad_pro-lock"),
+            ignore=shutil.ignore_patterns(
+                "*.kicad_pro-lock",
+                ".git",
+                ".gitignore",
+                ".gitattributes",
+                ".history",
+                ".vscode",
+                ".idea",
+                ".DS_Store",
+                "Thumbs.db",
+                "__pycache__",
+                "*.pyc",
+                "*.bak",
+            ),
         )
         if args.verbose:
             print(f"copied project to {output_dir}")
