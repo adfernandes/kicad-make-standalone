@@ -115,6 +115,9 @@ def find_kicad_python() -> Path | None:
         for pf in ("C:/Program Files/KiCad", "C:/Program Files (x86)/KiCad"):
             base = Path(pf)
             if base.exists():
+                # KiCad-10 only — match "10.*" first; sort lexicographically does
+                # NOT order versions correctly across major versions ("9.0" > "10.0").
+                candidates += sorted(base.glob("10.*/bin/python.exe"), reverse=True)
                 candidates += sorted(base.glob("*/bin/python.exe"), reverse=True)
 
     cli = shutil.which("kicad-cli") or shutil.which("kicad-cli.exe")
@@ -159,7 +162,13 @@ def ensure_kicad_python() -> None:
             "  Windows: C:\\Program Files\\KiCad\\<ver>\\bin\\python.exe"
         )
     print(f"[make_standalone] re-execing with KiCad's Python: {kp}", file=sys.stderr)
-    os.execv(str(kp), [str(kp), str(Path(__file__).resolve())] + sys.argv[1:])
+    argv = [str(kp), str(Path(__file__).resolve()), *sys.argv[1:]]
+    if platform.system() == "Windows":
+        # os.execv on Windows goes through the MS CRT which mis-quotes paths with
+        # spaces (e.g. "C:\Program Files\..."); subprocess.run uses CreateProcessW
+        # and quotes correctly.
+        sys.exit(subprocess.run(argv).returncode)
+    os.execv(str(kp), argv)
 
 
 def find_project_dir(start: Path) -> Path:
