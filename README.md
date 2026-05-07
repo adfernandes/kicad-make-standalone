@@ -4,6 +4,17 @@ Make a **KiCad 10** project self-contained and redistributable. The script extra
 
 After running it, you can zip the project, send it to a colleague (or commit it to a repo) and it will open and build identically on any machine that has KiCad 10 installed — no library setup required.
 
+## Intended workflow
+
+This is a **distribution / archive** tool, not a replacement for the global-libraries workflow. Global libraries are the better choice for active development: when a shared component is updated, KiCad's ERC/DRC will flag every project that has drifted from the new version, so you know exactly what to refresh.
+
+The recommended pattern is:
+
+- **Day-to-day**: keep your working project linked to your global libraries (the default KiCad setup). You get drift detection across all your designs for free.
+- **Shipping a snapshot**: run the script with `--output-dir` to produce a frozen, self-contained copy beside your live project — for sending to a colleague, archiving a released revision, or committing a fab-ready bundle. Your original project is untouched and stays wired to your global libraries.
+
+In short: keep both a maintainable design on global libs *and* on-demand standalone snapshots for distribution.
+
 ## What it does
 
 1. **Symbols** — extracts every used symbol from the schematic's `(lib_symbols ...)` block and writes a project-local `<Project>_Lib.kicad_sym`. Power symbols (`power:*`) are kept as system references.
